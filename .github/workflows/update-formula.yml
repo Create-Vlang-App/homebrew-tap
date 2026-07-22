@@ -1,0 +1,82 @@
+name: Update formula
+
+on:
+  repository_dispatch:
+    types: [new-release]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to update to (e.g. 0.0.1)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Resolve version and source tarball from GitHub Release
+        id: meta
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          PAYLOAD_VERSION: ${{ github.event.client_payload.version }}
+        run: |
+          set -euo pipefail
+          VERSION="${INPUT_VERSION:-$PAYLOAD_VERSION}"
+          if [ -z "$VERSION" ]; then
+            echo "::error::No version provided via workflow_dispatch or repository_dispatch payload" >&2
+            exit 1
+          fi
+          TAG="create-vlang-app@${VERSION}"
+          URL="https://github.com/Create-Vlang-App/create-vlang-app/archive/refs/tags/${TAG}.tar.gz"
+          SHA=""
+          for attempt in $(seq 1 24); do
+            if curl -sfL "$URL" -o /tmp/cva-src.tgz; then
+              SHA=$(sha256sum /tmp/cva-src.tgz | cut -d' ' -f1)
+              if [ -n "$SHA" ]; then
+                break
+              fi
+            fi
+            echo "::warning::Release tarball not ready for ${TAG} (attempt ${attempt}/24); retrying in 15s"
+            sleep 15
+            SHA=""
+          done
+          rm -f /tmp/cva-src.tgz
+          if [ -z "$SHA" ]; then
+            echo "::error::Could not download or hash tarball at $URL" >&2
+            exit 1
+          fi
+          {
+            echo "version=$VERSION"
+            echo "sha256=$SHA"
+            echo "url=$URL"
+          } >> "$GITHUB_OUTPUT"
+          echo "Resolved v${VERSION}"
+          echo "  url=$URL"
+          echo "  sha256=$SHA"
+
+      - name: Patch formula
+        env:
+          FORMULA_URL: ${{ steps.meta.outputs.url }}
+          FORMULA_SHA: ${{ steps.meta.outputs.sha256 }}
+          FORMULA_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          sed -i "s|url \".*\"|url \"${FORMULA_URL}\"|" Formula/create-vlang-app.rb
+          sed -i "s|sha256 \".*\"|sha256 \"${FORMULA_SHA}\"|" Formula/create-vlang-app.rb
+          sed -i "s|version \".*\"|version \"${FORMULA_VERSION}\"|" Formula/create-vlang-app.rb
+          # Directory name inside the release tarball matches the tag (slashes -> -)
+          EXTRACT_DIR="create-vlang-app-create-vlang-app@${FORMULA_VERSION}"
+          sed -i "s|cd \".*\" do|cd \"${EXTRACT_DIR}\" do|" Formula/create-vlang-app.rb
+          echo "----- Updated formula -----"
+          cat Formula/create-vlang-app.rb
+
+      - name: Commit and push
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
+        with:
+          commit_message: "feat: update formula to ${{ steps.meta.outputs.version }}"
+          commit_user_name: "Create Vlang App Bot"
+          commit_user_email: "ulisescf.24@gmail.com"
