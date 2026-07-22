@@ -2,13 +2,7 @@
 
 Homebrew formula for [create-vlang-app](https://github.com/Create-Vlang-App/create-vlang-app).
 
-Primary install path for V developers is **VPM**:
-
-```bash
-v install create-vlang-app
-```
-
-Homebrew is a secondary channel for macOS/Linux users.
+Pinned to tag [`create-vlang-app@0.1.0`](https://github.com/Create-Vlang-App/create-vlang-app/releases/tag/create-vlang-app%400.1.0).
 
 ## Install
 
@@ -20,54 +14,33 @@ brew install create-vlang-app
 ## Usage
 
 ```bash
-create-vlang-app my-app --template web-server --no-interactive
-# or after VPM:
-v install create-vlang-app
-create-vlang-app my-app
+create-vlang-app my-app --template web-server --addons github-setup
 ```
 
-## Update
+## Other channels
+
+| Channel | How |
+|---------|-----|
+| GitHub Release | [linux amd64 binary](https://github.com/Create-Vlang-App/create-vlang-app/releases/tag/create-vlang-app%400.1.0) |
+| AUR | `yay -S create-vlang-app` |
+| Source | Build from [create-vlang-app](https://github.com/Create-Vlang-App/create-vlang-app) |
+
+## Automated updates
+
+Release tags `create-vlang-app@X.Y.Z` trigger formula bumps via `repository_dispatch` from the CLI repo. Manual:
 
 ```bash
-brew upgrade create-vlang-app
+gh workflow run "Update formula" --repo Create-Vlang-App/homebrew-tap -f version=0.1.0
 ```
 
-## Automated updates (`repository_dispatch`)
-
-When [`create-vlang-app` Release](https://github.com/Create-Vlang-App/create-vlang-app/actions/workflows/publish.yml)
-succeeds for tag `create-vlang-app@X.Y.Z`, [`notify-homebrew.yml`](https://github.com/Create-Vlang-App/create-vlang-app/blob/main/.github/workflows/notify-homebrew.yml)
-waits for the GitHub Release tarball, then sends:
-
-```json
-{
-  "event_type": "new-release",
-  "client_payload": { "version": "X.Y.Z" }
-}
-```
-
-This repository's [`update-formula.yml`](.github/workflows/update-formula.yml) handles that event (and
-manual `workflow_dispatch`) by patching `Formula/create-vlang-app.rb` url/sha256/version and committing.
-
-Manual bump:
-
-```bash
-gh workflow run "Update formula" --repo Create-Vlang-App/homebrew-tap -f version=0.0.1
-```
-
-## Available formulae
+## Formulae
 
 | Formula | Description |
 |---------|-------------|
-| `create-vlang-app` | V-native scaffolding CLI for the V programming language |
-
----
-
-> **Other install methods:** [VPM / GitHub](https://github.com/Create-Vlang-App/create-vlang-app) · [AUR](https://aur.archlinux.org/packages/create-vlang-app) · [Docker](https://hub.docker.com/r/ulisesjeremias/create-vlang-app) (optional)
+| `create-vlang-app` | V-native scaffolding CLI |
 
 ## Contributors
 
 <a href="https://github.com/Create-Vlang-App/homebrew-tap/contributors">
-  <img src="https://contrib.rocks/image?repo=Create-Vlang-App/homebrew-tap"/>
+  <img src="https://contrib.rocks/image?repo=Create-Vlang-App/homebrew-tap" alt="contrib.rocks"/>
 </a>
-
-Made with [contributors-img](https://contrib.rocks).
