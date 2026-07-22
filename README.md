@@ -1,5 +1,7 @@
 # Create-Vlang-App Homebrew Tap
 
+[![Discord](https://img.shields.io/discord/1527933660764831825?label=Discord&logo=discord&logoColor=white)](https://discord.gg/dwFTsR7fK2)
+
 Homebrew formula for [create-vlang-app](https://github.com/Create-Vlang-App/create-vlang-app).
 
 Pinned to tag [`create-vlang-app@0.1.0`](https://github.com/Create-Vlang-App/create-vlang-app/releases/tag/create-vlang-app%400.1.0).
