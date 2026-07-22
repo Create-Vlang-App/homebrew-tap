@@ -18,5 +18,9 @@ class CreateVlangApp < Formula
 
   test do
     assert_match version.to_s, shell_output("#{bin}/create-vlang-app --version")
+    help = shell_output("#{bin}/create-vlang-app --help")
+    assert_includes help, "create-vlang-app"
+    assert_includes help, "list-templates"
+    assert_includes help, "list-addons"
   end
 end
