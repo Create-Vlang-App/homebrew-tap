@@ -1,5 +1,7 @@
 # Create-Vlang-App Homebrew Tap
 
+[![Release](https://img.shields.io/github/v/release/Create-Vlang-App/create-vlang-app?filter=create-vlang-app%40*&style=flat-square&label=Release)](https://github.com/Create-Vlang-App/create-vlang-app/releases/tag/create-vlang-app%400.1.0)
+[![Website](https://img.shields.io/badge/site-create--awesome--vlang--app.vercel.app-8B5CF6?style=flat-square)](https://create-awesome-vlang-app.vercel.app)
 [![Discord](https://img.shields.io/discord/1527933660764831825?label=Discord&logo=discord&logoColor=white)](https://discord.gg/dwFTsR7fK2)
 
 Homebrew formula for [create-vlang-app](https://github.com/Create-Vlang-App/create-vlang-app).
@@ -18,6 +20,8 @@ brew install create-vlang-app
 ```bash
 create-vlang-app my-app --template web-server --addons github-setup
 ```
+
+Browse templates and extensions: **[create-awesome-vlang-app.vercel.app](https://create-awesome-vlang-app.vercel.app)**
 
 ## Other channels
 
