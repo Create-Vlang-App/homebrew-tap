@@ -10,7 +10,7 @@ class CreateVlangApp < Formula
   depends_on "git"
 
   def install
-    cd "create-vlang-app-create-vlang-app-0.1.0" do
+    cd "create-vlang-app-create-vlang-app@0.1.0" do
       system "make", "build"
       bin.install "create-vlang-app"
     end
