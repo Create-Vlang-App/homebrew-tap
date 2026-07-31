@@ -68,9 +68,6 @@ jobs:
           sed -i "s|url \".*\"|url \"${FORMULA_URL}\"|" Formula/create-vlang-app.rb
           sed -i "s|sha256 \".*\"|sha256 \"${FORMULA_SHA}\"|" Formula/create-vlang-app.rb
           sed -i "s|version \".*\"|version \"${FORMULA_VERSION}\"|" Formula/create-vlang-app.rb
-          # GitHub replaces @ in tags with - in the archive root directory name.
-          EXTRACT_DIR="create-vlang-app-create-vlang-app-${FORMULA_VERSION}"
-          sed -i "s|cd \".*\" do|cd \"${EXTRACT_DIR}\" do|" Formula/create-vlang-app.rb
           echo "----- Updated formula -----"
           cat Formula/create-vlang-app.rb
 

@@ -10,10 +10,9 @@ class CreateVlangApp < Formula
   depends_on "git"
 
   def install
-    cd "create-vlang-app-create-vlang-app-0.1.0" do
-      system "make", "build"
-      bin.install "create-vlang-app"
-    end
+    # Homebrew already unpacks the GitHub archive into the build directory.
+    system "make", "build"
+    bin.install "create-vlang-app"
   end
 
   test do
