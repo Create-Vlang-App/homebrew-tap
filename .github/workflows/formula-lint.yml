@@ -1,0 +1,31 @@
+name: Formula lint
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  formula-lint:
+    name: Formula lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Ruby syntax check on all formulas
+        run: |
+          set -euo pipefail
+          find Formula -name '*.rb' -print0 | xargs -0 -n1 ruby -c
+      - name: Formulas declare a Formula class
+        run: |
+          set -euo pipefail
+          for f in Formula/*.rb; do
+            grep -Eq '^class [A-Z][A-Za-z]+ < Formula' "$f" || {
+              echo "::error::$f: no 'class ... < Formula' declaration found"
+              exit 1
+            }
+          done
+          echo "All formulas OK"
