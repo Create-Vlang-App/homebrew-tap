@@ -15,10 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: Ruby syntax check on all formulas
         run: |
           set -euo pipefail
           find Formula -name '*.rb' -print0 | xargs -0 -n1 ruby -c
+
       - name: Formulas declare a Formula class
         run: |
           set -euo pipefail
@@ -29,3 +31,66 @@ jobs:
             }
           done
           echo "All formulas OK"
+
+      - name: ShellCheck workflows
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          echo "ShellCheck version: $(shellcheck --version | head -1)"
+          for wf in .github/workflows/*.yml; do
+            echo "--- shellcheck $wf ---"
+            shellcheck --severity=error --shell=bash --exclude=SC2148,SC2034,SC2154 "$wf" || {
+              echo "::warning::$wf has shellcheck errors"
+            }
+          done
+
+      - name: Version drift check (GitHub Release)
+        run: |
+          set -euo pipefail
+          FORMULA_VER=$(grep -E 'version "' Formula/*.rb | head -1 | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+          GH_TAG=$(curl -sfL https://api.github.com/repos/Create-Vlang-App/create-vlang-app/releases/latest | jq -r '.tag_name')
+          GH_VER=${GH_TAG#create-vlang-app@}
+          echo "Formula version: $FORMULA_VER"
+          echo "GitHub latest tag: $GH_TAG (version $GH_VER)"
+          if [ "$FORMULA_VER" != "$GH_VER" ]; then
+            echo "::warning::Formula version ($FORMULA_VER) differs from GitHub latest ($GH_VER)"
+          else
+            echo "Version sync OK: $FORMULA_VER"
+          fi
+          # Verify sha256 matches tarball
+          FORMULA_SHA=$(grep -E 'sha256 "' Formula/*.rb | head -1 | grep -Eo '"[^"]+"' | tr -d '"')
+          FORMULA_URL=$(grep -E 'url "' Formula/*.rb | head -1 | grep -Eo '"[^"]+"' | tr -d '"')
+          echo "Formula URL: $FORMULA_URL"
+          echo "Formula sha256: $FORMULA_SHA"
+          TMP=$(mktemp)
+          curl -sfL "$FORMULA_URL" -o "$TMP"
+          ACT_SHA=$(sha256sum "$TMP" | cut -d' ' -f1)
+          rm -f "$TMP"
+          echo "Actual tarball sha256: $ACT_SHA"
+          if [ "$FORMULA_SHA" != "$ACT_SHA" ]; then
+            echo "::warning::Formula sha256 differs from actual tarball sha"
+          else
+            echo "SHA sync OK"
+          fi
+
+      - name: Setup Homebrew
+        uses: Homebrew/actions/setup-homebrew@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Brew audit (strict)
+        run: |
+          set -euo pipefail
+          brew audit --strict --online Formula/*.rb || brew audit --strict Formula/*.rb || {
+            echo "::warning::brew audit found issues"
+            exit 1
+          }
+
+      - name: Brew style
+        run: |
+          set -euo pipefail
+          brew style Formula/*.rb || {
+            echo "::warning::brew style found issues"
+            exit 1
+          }
