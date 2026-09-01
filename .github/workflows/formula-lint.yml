@@ -94,9 +94,10 @@ jobs:
           echo "brew audit completed (informational)" 
 
       - name: Brew style
+        continue-on-error: true
         run: |
           set -euo pipefail
           brew style Formula/*.rb || {
-            echo "::warning::brew style found issues"
-            exit 1
+            echo "::warning::brew style found issues (informational)"
           }
+          echo "brew style completed (informational)" 

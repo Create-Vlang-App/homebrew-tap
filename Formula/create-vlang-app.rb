@@ -6,8 +6,8 @@ class CreateVlangApp < Formula
   sha256 "f7c1f62f8eab3bcd4e55b05700924c864f182247ff7c050c39884f5013592729"
   license "MIT"
 
-  depends_on "vlang"
   depends_on "git"
+  depends_on "vlang"
 
   def install
     # Homebrew already unpacks the GitHub archive into the build directory.
