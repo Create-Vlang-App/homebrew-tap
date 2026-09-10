@@ -85,6 +85,10 @@ jobs:
             echo "Update PR already open for ${FORMULA_VERSION}; nothing to do"
             exit 0
           fi
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            echo "Branch $BRANCH already exists on remote; nothing to do"
+            exit 0
+          fi
           git config user.name "Create Vlang App Bot"
           git config user.email "ulisescf.24@gmail.com"
           git checkout -b "$BRANCH"
