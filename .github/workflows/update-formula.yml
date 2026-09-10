@@ -81,6 +81,11 @@ jobs:
         run: |
           set -euo pipefail
           BRANCH="release/${FORMULA_VERSION}"
+          CURRENT=$(grep -E 'version "' Formula/create-vlang-app.rb | head -1 | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+          if [ "$CURRENT" = "$FORMULA_VERSION" ]; then
+            echo "Formula already at ${FORMULA_VERSION}; nothing to do"
+            exit 0
+          fi
           if gh pr list --head "$BRANCH" --state open --json number --jq -e '.[0].number' >/dev/null; then
             echo "Update PR already open for ${FORMULA_VERSION}; nothing to do"
             exit 0
