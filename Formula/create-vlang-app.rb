@@ -1,9 +1,9 @@
 class CreateVlangApp < Formula
   desc "V-native scaffolding CLI for the V programming language"
   homepage "https://github.com/Create-Vlang-App/create-vlang-app"
-  url "https://github.com/Create-Vlang-App/create-vlang-app/archive/refs/tags/create-vlang-app@0.1.0.tar.gz"
-  version "0.1.0"
-  sha256 "f7c1f62f8eab3bcd4e55b05700924c864f182247ff7c050c39884f5013592729"
+  url "https://github.com/Create-Vlang-App/create-vlang-app/archive/refs/tags/create-vlang-app@0.2.0.tar.gz"
+  version "0.2.0"
+  sha256 "c4230da44b6d2b170846a60e1b1b91b06533f12ac3690499157323381b35613c"
   license "MIT"
 
   depends_on "git"
