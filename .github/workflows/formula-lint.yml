@@ -148,8 +148,9 @@ jobs:
 
       - name: Install formula from release binary
         run: |
-          HOMEBREW_NO_INSTALL_FROM_API=1 brew install --build-from-source \
-            --formula ./Formula/create-vlang-app.rb
+          brew tap Create-Vlang-App/tap "$GITHUB_WORKSPACE"
+          HOMEBREW_NO_INSTALL_FROM_API=1 brew install \
+            Create-Vlang-App/tap/create-vlang-app
 
       - name: Run formula tests
         run: |
