@@ -1,18 +1,26 @@
 class CreateVlangApp < Formula
   desc "V-native scaffolding CLI for the V programming language"
   homepage "https://github.com/Create-Vlang-App/create-vlang-app"
-  url "https://github.com/Create-Vlang-App/create-vlang-app/archive/refs/tags/create-vlang-app@0.2.1.tar.gz"
+  url "https://github.com/Create-Vlang-App/create-vlang-app/releases/download/create-vlang-app@0.2.1/create-vlang-app-darwin-aarch64", using: :nounzip
   version "0.2.1"
-  sha256 "afb1cbc1221f275ad205018eb32b46d7e41b5183f6a1d3cb1adffee42197d9b5"
+  sha256 "ada78f0717699583c2bc5c243ca73a4c0ac816a86346162ba94c59cd9dd133bf"
   license "MIT"
 
-  depends_on "git"
-  depends_on "vlang"
+  on_intel do
+    url "https://github.com/Create-Vlang-App/create-vlang-app/releases/download/create-vlang-app@0.2.1/create-vlang-app-darwin-x86_64", using: :nounzip
+    sha256 "5e43c7aafd5c26067651b8c494bc8d63c7e8774675363341b11019cee5c869c0"
+  end
+
+  depends_on :macos
 
   def install
-    # Homebrew already unpacks the GitHub archive into the build directory.
-    system "make", "build"
-    bin.install "create-vlang-app"
+    asset = if Hardware::CPU.arm?
+      "create-vlang-app-darwin-aarch64"
+    else
+      "create-vlang-app-darwin-x86_64"
+    end
+    chmod 0755, asset
+    bin.install asset => "create-vlang-app"
   end
 
   test do

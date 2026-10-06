@@ -1,6 +1,7 @@
+---
 name: Update formula
 
-on:
+"on":
   repository_dispatch:
     types: [new-release]
   workflow_dispatch:
@@ -17,9 +18,9 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - name: Resolve version and source tarball from GitHub Release
+      - name: Resolve macOS binaries and checksums from GitHub Release
         id: meta
         env:
           INPUT_VERSION: ${{ github.event.inputs.version }}
@@ -28,47 +29,100 @@ jobs:
           set -euo pipefail
           VERSION="${INPUT_VERSION:-$PAYLOAD_VERSION}"
           if [ -z "$VERSION" ]; then
-            echo "::error::No version provided via workflow_dispatch or repository_dispatch payload" >&2
+            echo "::error::No version provided via workflow_dispatch or" \
+              "repository_dispatch payload" >&2
             exit 1
           fi
           TAG="create-vlang-app@${VERSION}"
-          URL="https://github.com/Create-Vlang-App/create-vlang-app/archive/refs/tags/${TAG}.tar.gz"
-          SHA=""
-          for attempt in $(seq 1 24); do
-            if curl -sfL "$URL" -o /tmp/cva-src.tgz; then
-              SHA=$(sha256sum /tmp/cva-src.tgz | cut -d' ' -f1)
-              if [ -n "$SHA" ]; then
-                break
-              fi
-            fi
-            echo "::warning::Release tarball not ready for ${TAG} (attempt ${attempt}/24); retrying in 15s"
-            sleep 15
+          BASE_URL="https://github.com/"
+          BASE_URL+="Create-Vlang-App/create-vlang-app/releases/download/${TAG}"
+          for arch in aarch64 x86_64; do
+            ASSET="create-vlang-app-darwin-${arch}"
+            URL="${BASE_URL}/${ASSET}"
             SHA=""
+            for attempt in $(seq 1 24); do
+              if curl -sfL "$URL" -o "/tmp/${ASSET}"; then
+                SHA=$(sha256sum "/tmp/${ASSET}" | cut -d' ' -f1)
+                if [ -n "$SHA" ]; then
+                  break
+                fi
+              fi
+              printf '::warning::%s %s (attempt %s/24); retry in 15s\n' \
+                "$ASSET" "$TAG" "$attempt"
+              sleep 15
+              SHA=""
+            done
+            if [ -z "$SHA" ]; then
+              echo "::error::Unable to fetch release asset: $URL" >&2
+              exit 1
+            fi
+            if [ "$arch" = "aarch64" ]; then
+              SHA_ARM="$SHA"
+              URL_ARM="$URL"
+            else
+              SHA_INTEL="$SHA"
+              URL_INTEL="$URL"
+            fi
           done
-          rm -f /tmp/cva-src.tgz
-          if [ -z "$SHA" ]; then
-            echo "::error::Could not download or hash tarball at $URL" >&2
-            exit 1
-          fi
+          rm -f /tmp/create-vlang-app-darwin-*
           {
             echo "version=$VERSION"
-            echo "sha256=$SHA"
-            echo "url=$URL"
+            echo "sha256_arm=$SHA_ARM"
+            echo "sha256_intel=$SHA_INTEL"
+            echo "url_arm=$URL_ARM"
+            echo "url_intel=$URL_INTEL"
           } >> "$GITHUB_OUTPUT"
           echo "Resolved v${VERSION}"
-          echo "  url=$URL"
-          echo "  sha256=$SHA"
+          echo "  arm64: $URL_ARM ($SHA_ARM)"
+          echo "  x86_64: $URL_INTEL ($SHA_INTEL)"
 
       - name: Patch formula
         env:
-          FORMULA_URL: ${{ steps.meta.outputs.url }}
-          FORMULA_SHA: ${{ steps.meta.outputs.sha256 }}
+          FORMULA_URL_ARM: ${{ steps.meta.outputs.url_arm }}
+          FORMULA_URL_INTEL: ${{ steps.meta.outputs.url_intel }}
+          FORMULA_SHA_ARM: ${{ steps.meta.outputs.sha256_arm }}
+          FORMULA_SHA_INTEL: ${{ steps.meta.outputs.sha256_intel }}
           FORMULA_VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
-          sed -i "s|url \".*\"|url \"${FORMULA_URL}\"|" Formula/create-vlang-app.rb
-          sed -i "s|sha256 \".*\"|sha256 \"${FORMULA_SHA}\"|" Formula/create-vlang-app.rb
-          sed -i "s|version \".*\"|version \"${FORMULA_VERSION}\"|" Formula/create-vlang-app.rb
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+
+          path = Path("Formula/create-vlang-app.rb")
+          formula = path.read_text()
+          arm_url = os.environ["FORMULA_URL_ARM"]
+          intel_url = os.environ["FORMULA_URL_INTEL"]
+          arm_sha = os.environ["FORMULA_SHA_ARM"]
+          intel_sha = os.environ["FORMULA_SHA_INTEL"]
+          version = os.environ["FORMULA_VERSION"]
+
+          formula = re.sub(
+              r'(?m)^  url ".*"$', f'  url "{arm_url}"', formula, count=1
+          )
+          formula = re.sub(
+              r'(?m)^  sha256 ".*"$', f'  sha256 "{arm_sha}"', formula, count=1
+          )
+          version_line = r'(?m)^  version ".*"$'
+          version_value = f'  version "{version}"'
+          formula = re.sub(version_line, version_value, formula, count=1)
+          intel_block = (
+              "  on_intel do\n"
+              f'    url "{intel_url}"\n'
+              f'    sha256 "{intel_sha}"\n'
+              "  end"
+          )
+          formula, replacements = re.subn(
+              r"(?ms)^  on_intel do\n.*?^  end$",
+              intel_block,
+              formula,
+              count=1,
+          )
+          if replacements != 1:
+              raise SystemExit("Intel URL block missing or duplicated")
+          path.write_text(formula)
+          PY
           echo "----- Updated formula -----"
           cat Formula/create-vlang-app.rb
 
@@ -76,21 +130,26 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORMULA_VERSION: ${{ steps.meta.outputs.version }}
-          FORMULA_SHA: ${{ steps.meta.outputs.sha256 }}
-          FORMULA_URL: ${{ steps.meta.outputs.url }}
+          FORMULA_SHA_ARM: ${{ steps.meta.outputs.sha256_arm }}
+          FORMULA_SHA_INTEL: ${{ steps.meta.outputs.sha256_intel }}
+          FORMULA_URL_ARM: ${{ steps.meta.outputs.url_arm }}
+          FORMULA_URL_INTEL: ${{ steps.meta.outputs.url_intel }}
         run: |
           set -euo pipefail
           BRANCH="release/${FORMULA_VERSION}"
-          CURRENT=$(grep -E 'version "' Formula/create-vlang-app.rb | head -1 | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+          CURRENT=$(sed -n 's/^  version "\([0-9.]*\)"/\1/p' \
+            Formula/create-vlang-app.rb | head -1)
           if [ "$CURRENT" = "$FORMULA_VERSION" ]; then
             echo "Formula already at ${FORMULA_VERSION}; nothing to do"
             exit 0
           fi
-          if gh pr list --head "$BRANCH" --state open --json number --jq -e '.[0].number' >/dev/null; then
+          if gh pr list --head "$BRANCH" --state open --json number \
+            --jq -e '.[0].number' >/dev/null; then
             echo "Update PR already open for ${FORMULA_VERSION}; nothing to do"
             exit 0
           fi
-          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+          if git ls-remote --exit-code --heads origin "$BRANCH" \
+            >/dev/null 2>&1; then
             echo "Branch $BRANCH already exists on remote; nothing to do"
             exit 0
           fi
@@ -103,13 +162,17 @@ jobs:
           cat > /tmp/cva-pr-body.md <<PRBODY
           ## Description
 
-          Automated formula update to ${FORMULA_VERSION} (${FORMULA_URL}, sha256 ${FORMULA_SHA}).
+          Automated formula update to ${FORMULA_VERSION}.
+
+          - Apple Silicon: ${FORMULA_URL_ARM} (sha256 ${FORMULA_SHA_ARM})
+          - Intel: ${FORMULA_URL_INTEL} (sha256 ${FORMULA_SHA_INTEL})
 
           ## Type of Change
           - [x] Formula update
 
           ## How Has This Been Tested?
-          - [x] Version drift + tarball sha check in update run; Formula lint runs on this PR
+          - [x] Both release binaries and checksums resolved in update run
+          - [x] Formula lint runs on this PR
 
           ## Checklist
           - [x] Self-review done
