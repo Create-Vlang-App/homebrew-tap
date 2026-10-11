@@ -12,7 +12,6 @@ name: Update formula
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   update:
@@ -98,9 +97,14 @@ jobs:
           intel_sha = os.environ["FORMULA_SHA_INTEL"]
           version = os.environ["FORMULA_VERSION"]
 
-          formula = re.sub(
-              r'(?m)^  url ".*"$', f'  url "{arm_url}"', formula, count=1
+          formula, arm_replacements = re.subn(
+              r'(?m)^  url "[^"]+"(, using: :nounzip)?$',
+              lambda match: f'  url "{arm_url}"{match.group(1) or ""}',
+              formula,
+              count=1,
           )
+          if arm_replacements != 1:
+              raise SystemExit("Apple Silicon URL line missing or duplicated")
           formula = re.sub(
               r'(?m)^  sha256 ".*"$', f'  sha256 "{arm_sha}"', formula, count=1
           )
@@ -109,7 +113,7 @@ jobs:
           formula = re.sub(version_line, version_value, formula, count=1)
           intel_block = (
               "  on_intel do\n"
-              f'    url "{intel_url}"\n'
+              f'    url "{intel_url}", using: :nounzip\n'
               f'    sha256 "{intel_sha}"\n'
               "  end"
           )
@@ -161,26 +165,5 @@ jobs:
           git add Formula/create-vlang-app.rb
           git commit -m "feat: update formula to ${FORMULA_VERSION}"
           git push -u origin "$BRANCH"
-          cat > /tmp/cva-pr-body.md <<PRBODY
-          ## Description
-
-          Automated formula update to ${FORMULA_VERSION}.
-
-          - Apple Silicon: ${FORMULA_URL_ARM} (sha256 ${FORMULA_SHA_ARM})
-          - Intel: ${FORMULA_URL_INTEL} (sha256 ${FORMULA_SHA_INTEL})
-
-          ## Type of Change
-          - [x] Formula update
-
-          ## How Has This Been Tested?
-          - [x] Both release binaries and checksums resolved in update run
-          - [x] Formula lint runs on this PR
-
-          ## Checklist
-          - [x] Self-review done
-          - [x] Formula validated (brew audit --strict, brew style run in CI)
-          PRBODY
-          sed -i 's/^          //' /tmp/cva-pr-body.md
-          gh pr create --base main --head "$BRANCH" \
-            --title "feat: update formula to ${FORMULA_VERSION}" \
-            --body-file /tmp/cva-pr-body.md
+          echo "Formula branch ready: ${BRANCH}"
+          echo "The Create-Vlang-App release workflow opens the pull request using its tap token."
