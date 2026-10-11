@@ -12,7 +12,6 @@ name: Update formula
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   update:
@@ -166,26 +165,5 @@ jobs:
           git add Formula/create-vlang-app.rb
           git commit -m "feat: update formula to ${FORMULA_VERSION}"
           git push -u origin "$BRANCH"
-          cat > /tmp/cva-pr-body.md <<PRBODY
-          ## Description
-
-          Automated formula update to ${FORMULA_VERSION}.
-
-          - Apple Silicon: ${FORMULA_URL_ARM} (sha256 ${FORMULA_SHA_ARM})
-          - Intel: ${FORMULA_URL_INTEL} (sha256 ${FORMULA_SHA_INTEL})
-
-          ## Type of Change
-          - [x] Formula update
-
-          ## How Has This Been Tested?
-          - [x] Both release binaries and checksums resolved in update run
-          - [x] Formula lint runs on this PR
-
-          ## Checklist
-          - [x] Self-review done
-          - [x] Formula validated (brew audit --strict, brew style run in CI)
-          PRBODY
-          sed -i 's/^          //' /tmp/cva-pr-body.md
-          gh pr create --base main --head "$BRANCH" \
-            --title "feat: update formula to ${FORMULA_VERSION}" \
-            --body-file /tmp/cva-pr-body.md
+          echo "Formula branch ready: ${BRANCH}"
+          echo "The Create-Vlang-App release workflow opens the pull request using its tap token."

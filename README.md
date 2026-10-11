@@ -33,11 +33,13 @@ Browse templates and extensions: **[create-awesome-vlang-app.vercel.app](https:/
 
 ## Automated updates
 
-Release tags `create-vlang-app@X.Y.Z` trigger formula bumps via `repository_dispatch` from the CLI repo. Manual:
+Release tags `create-vlang-app@X.Y.Z` trigger formula bumps via `repository_dispatch` from the CLI repo. The tap workflow updates the formula branch; the CLI release workflow opens its pull request with the tap token because the organization does not allow repository workflows to create pull requests with `GITHUB_TOKEN`. Manual:
 
 ```bash
 gh workflow run "Update formula" --repo Create-Vlang-App/homebrew-tap -f version=0.1.0
 ```
+
+When running the tap workflow manually, the formula branch is created. Open a pull request from `release/<version>` after the workflow completes.
 
 ## Formulae
 
