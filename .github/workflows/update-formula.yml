@@ -137,8 +137,10 @@ jobs:
         run: |
           set -euo pipefail
           BRANCH="release/${FORMULA_VERSION}"
-          CURRENT=$(sed -n 's/^  version "\([0-9.]*\)"/\1/p' \
-            Formula/create-vlang-app.rb | head -1)
+          # Patch formula ran earlier in this job. Read the committed base
+          # version so this check compares against main, not the patched tree.
+          CURRENT=$(git show "HEAD:Formula/create-vlang-app.rb" \
+            | sed -n 's/^  version "\([0-9.]*\)"/\1/p' | head -1)
           if [ "$CURRENT" = "$FORMULA_VERSION" ]; then
             echo "Formula already at ${FORMULA_VERSION}; nothing to do"
             exit 0
