@@ -64,42 +64,33 @@ jobs:
           else
             echo "Version sync OK: $FORMULA_VER"
           fi
-          # Verify the Apple Silicon binary checksum.
-          FORMULA_SHA=$(grep -E 'sha256 "' Formula/*.rb | head -1 \
-            | grep -Eo '"[^"]+"' | tr -d '"')
-          FORMULA_URL=$(grep -E 'url "' Formula/*.rb | head -1 \
-            | grep -Eo '"[^"]+"' | tr -d '"')
-          echo "Formula URL: $FORMULA_URL"
-          echo "Formula sha256: $FORMULA_SHA"
-          TMP=$(mktemp)
-          curl -sfL "$FORMULA_URL" -o "$TMP"
-          ACT_SHA=$(sha256sum "$TMP" | cut -d' ' -f1)
-          rm -f "$TMP"
-          echo "Actual Apple Silicon asset sha256: $ACT_SHA"
-          if [ "$FORMULA_SHA" != "$ACT_SHA" ]; then
-            echo "::error::Apple Silicon checksum mismatch" >&2
-            exit 1
-          else
-            echo "Apple Silicon SHA sync OK"
-          fi
+          verify_asset() {
+            local architecture="$1"
+            local asset="$2"
+            local formula_url formula_sha actual_sha asset_file
+            formula_url=$(grep -E "url \".*${asset}\"" Formula/create-vlang-app.rb \
+              | grep -Eo '"[^"]+"' | head -1 | tr -d '"')
+            formula_sha=$(grep -A1 -E "url \".*${asset}\"" Formula/create-vlang-app.rb \
+              | tail -1 | grep -Eo '[a-f0-9]{64}')
+            if [ -z "$formula_url" ] || [ -z "$formula_sha" ]; then
+              echo "::error::Missing ${architecture} URL or checksum in formula" >&2
+              return 1
+            fi
+            echo "${architecture} formula URL: ${formula_url}"
+            echo "${architecture} formula sha256: ${formula_sha}"
+            asset_file=$(mktemp)
+            curl -sfL "$formula_url" -o "$asset_file"
+            actual_sha=$(sha256sum "$asset_file" | cut -d' ' -f1)
+            rm -f "$asset_file"
+            if [ "$formula_sha" != "$actual_sha" ]; then
+              echo "::error::${architecture} checksum mismatch" >&2
+              return 1
+            fi
+            echo "${architecture} SHA sync OK"
+          }
 
-          # Verify the Intel binary checksum declared inside the on_intel block.
-          INTEL_URL=$(grep -E '^    url "' \
-            Formula/create-vlang-app.rb | sed -n '1p' | cut -d '"' -f2)
-          INTEL_SHA=$(grep -E '^    sha256 "' \
-            Formula/create-vlang-app.rb | sed -n '1p' | cut -d '"' -f2)
-          echo "Intel URL: $INTEL_URL"
-          echo "Intel sha256: $INTEL_SHA"
-          curl -sfL "$INTEL_URL" -o "$TMP-intel"
-          ACT_INTEL_SHA=$(sha256sum "$TMP-intel" | cut -d ' ' -f1)
-          rm -f "$TMP-intel"
-          echo "Actual Intel asset sha256: $ACT_INTEL_SHA"
-          if [ "$INTEL_SHA" != "$ACT_INTEL_SHA" ]; then
-            echo "::error::Intel checksum differs from release asset" >&2
-            exit 1
-          else
-            echo "Intel SHA sync OK"
-          fi
+          verify_asset "Apple Silicon" "darwin-aarch64"
+          verify_asset "Intel" "darwin-x86_64"
 
       - name: Setup Homebrew
         uses: Homebrew/actions/setup-homebrew@main
