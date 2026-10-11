@@ -98,9 +98,14 @@ jobs:
           intel_sha = os.environ["FORMULA_SHA_INTEL"]
           version = os.environ["FORMULA_VERSION"]
 
-          formula = re.sub(
-              r'(?m)^  url ".*"$', f'  url "{arm_url}"', formula, count=1
+          formula, arm_replacements = re.subn(
+              r'(?m)^  url "[^"]+"(, using: :nounzip)?$',
+              lambda match: f'  url "{arm_url}"{match.group(1) or ""}',
+              formula,
+              count=1,
           )
+          if arm_replacements != 1:
+              raise SystemExit("Apple Silicon URL line missing or duplicated")
           formula = re.sub(
               r'(?m)^  sha256 ".*"$', f'  sha256 "{arm_sha}"', formula, count=1
           )
@@ -109,7 +114,7 @@ jobs:
           formula = re.sub(version_line, version_value, formula, count=1)
           intel_block = (
               "  on_intel do\n"
-              f'    url "{intel_url}"\n'
+              f'    url "{intel_url}", using: :nounzip\n'
               f'    sha256 "{intel_sha}"\n'
               "  end"
           )
