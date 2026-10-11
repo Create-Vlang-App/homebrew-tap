@@ -97,34 +97,40 @@ jobs:
           intel_sha = os.environ["FORMULA_SHA_INTEL"]
           version = os.environ["FORMULA_VERSION"]
 
-          formula, arm_replacements = re.subn(
-              r'(?m)^  url "[^"]+"(, using: :nounzip)?$',
-              lambda match: f'  url "{arm_url}"{match.group(1) or ""}',
-              formula,
-              count=1,
-          )
-          if arm_replacements != 1:
-              raise SystemExit("Apple Silicon URL line missing or duplicated")
-          formula = re.sub(
-              r'(?m)^  sha256 ".*"$', f'  sha256 "{arm_sha}"', formula, count=1
-          )
+          def update_architecture(architecture, url, sha):
+              block_pattern = (
+                  rf"(?ms)^    on_{architecture} do\n"
+                  rf"(.*?)"
+                  rf"^    end$"
+              )
+              matches = list(re.finditer(block_pattern, formula))
+              if len(matches) != 1:
+                  raise SystemExit(
+                      f"Expected one {architecture} block, found {len(matches)}"
+                  )
+              match = matches[0]
+              block = match.group(1)
+              block, url_count = re.subn(
+                  r'(?m)^(      url ")[^"]+"(?:, using: :nounzip)?$',
+                  rf'\g<1>{url}", using: :nounzip',
+                  block,
+                  count=1,
+              )
+              block, sha_count = re.subn(
+                  r'(?m)^      sha256 ".*"$',
+                  f'      sha256 "{sha}"',
+                  block,
+                  count=1,
+              )
+              if url_count != 1 or sha_count != 1:
+                  raise SystemExit(f"URL or SHA-256 missing from {architecture} block")
+              return formula[: match.start(1)] + block + formula[match.end(1) :]
+
+          formula = update_architecture("arm", arm_url, arm_sha)
+          formula = update_architecture("intel", intel_url, intel_sha)
           version_line = r'(?m)^  version ".*"$'
           version_value = f'  version "{version}"'
           formula = re.sub(version_line, version_value, formula, count=1)
-          intel_block = (
-              "  on_intel do\n"
-              f'    url "{intel_url}", using: :nounzip\n'
-              f'    sha256 "{intel_sha}"\n'
-              "  end"
-          )
-          formula, replacements = re.subn(
-              r"(?ms)^  on_intel do\n.*?^  end$",
-              intel_block,
-              formula,
-              count=1,
-          )
-          if replacements != 1:
-              raise SystemExit("Intel URL block missing or duplicated")
           path.write_text(formula)
           PY
           echo "----- Updated formula -----"
