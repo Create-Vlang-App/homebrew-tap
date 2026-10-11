@@ -70,8 +70,13 @@ jobs:
             local formula_url formula_sha actual_sha asset_file
             formula_url=$(grep -E "url \".*${asset}\"" Formula/create-vlang-app.rb \
               | grep -Eo '"[^"]+"' | head -1 | tr -d '"')
-            formula_sha=$(grep -A1 -E "url \".*${asset}\"" Formula/create-vlang-app.rb \
-              | tail -1 | grep -Eo '[a-f0-9]{64}')
+            if [ "$asset" = "darwin-aarch64" ]; then
+              formula_sha=$(grep -E '^  sha256 "' Formula/create-vlang-app.rb \
+                | grep -Eo '[a-f0-9]{64}')
+            else
+              formula_sha=$(grep -A1 -E "url \".*${asset}\"" \
+                Formula/create-vlang-app.rb | tail -1 | grep -Eo '[a-f0-9]{64}')
+            fi
             if [ -z "$formula_url" ] || [ -z "$formula_sha" ]; then
               echo "::error::Missing ${architecture} URL or checksum in formula" >&2
               return 1
