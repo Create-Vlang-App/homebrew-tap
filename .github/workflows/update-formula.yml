@@ -97,37 +97,32 @@ jobs:
           intel_sha = os.environ["FORMULA_SHA_INTEL"]
           version = os.environ["FORMULA_VERSION"]
 
-          def update_architecture(architecture, url, sha):
-              block_pattern = (
-                  rf"(?ms)^    on_{architecture} do\n"
-                  rf"(.*?)"
-                  rf"^    end$"
+          def update_asset(asset, url, sha):
+              url_pattern = (
+                  rf'(?m)^(?P<indent> *)url "[^"]*{asset}"'
+                  rf'(?:, using: :nounzip)?$'
               )
-              matches = list(re.finditer(block_pattern, formula))
-              if len(matches) != 1:
-                  raise SystemExit(
-                      f"Expected one {architecture} block, found {len(matches)}"
-                  )
-              match = matches[0]
-              block = match.group(1)
-              block, url_count = re.subn(
-                  r'(?m)^(      url ")[^"]+"(?:, using: :nounzip)?$',
-                  rf'\g<1>{url}", using: :nounzip',
-                  block,
+              updated, url_replacements = re.subn(
+                  url_pattern,
+                  rf'\g<indent>url "{url}", using: :nounzip',
+                  formula,
                   count=1,
               )
-              block, sha_count = re.subn(
-                  r'(?m)^      sha256 ".*"$',
-                  f'      sha256 "{sha}"',
-                  block,
-                  count=1,
+              if asset == "darwin-aarch64":
+                  sha_pattern = r'(?m)^  sha256 ".*"$'
+                  sha_replacement = f'  sha256 "{sha}"'
+              else:
+                  sha_pattern = r'(?m)^      sha256 ".*"$'
+                  sha_replacement = f'      sha256 "{sha}"'
+              updated, sha_replacements = re.subn(
+                  sha_pattern, sha_replacement, updated, count=1
               )
-              if url_count != 1 or sha_count != 1:
-                  raise SystemExit(f"URL or SHA-256 missing from {architecture} block")
-              return formula[: match.start(1)] + block + formula[match.end(1) :]
+              if url_replacements != 1 or sha_replacements != 1:
+                  raise SystemExit(f"Expected one URL and SHA-256 for {asset}")
+              return updated
 
-          formula = update_architecture("arm", arm_url, arm_sha)
-          formula = update_architecture("intel", intel_url, intel_sha)
+          formula = update_asset("darwin-aarch64", arm_url, arm_sha)
+          formula = update_asset("darwin-x86_64", intel_url, intel_sha)
           version_line = r'(?m)^  version ".*"$'
           version_value = f'  version "{version}"'
           formula = re.sub(version_line, version_value, formula, count=1)
